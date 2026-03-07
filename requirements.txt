@@ -1,0 +1,23 @@
+# RUZZ GEN - Web CTF Fuzzing Command Generator
+# by zoro_rj
+#
+# No external Python packages required.
+# All dependencies are Python standard library:
+#   - sys
+#   - os
+#   - re
+#   - shutil
+#
+# Python >= 3.6 required (f-strings)
+#
+# ── External Tools (install separately) ──────────────────
+# ffuf          → https://github.com/ffuf/ffuf
+# feroxbuster   → https://github.com/epi052/feroxbuster
+# wfuzz         → pip install wfuzz
+# gobuster      → https://github.com/OJ/gobuster
+# dirsearch     → pip install dirsearch
+#
+# ── Wordlists ─────────────────────────────────────────────
+# SecLists      → https://github.com/danielmiessler/SecLists
+#   Install: sudo apt install seclists
+#   Or:      git clone https://github.com/danielmiessler/SecLists /usr/share/seclists
