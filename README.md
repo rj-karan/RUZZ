@@ -1,16 +1,12 @@
-# 🎯 Fuzz Gen — Web CTF Fuzzing Command Generator
+# 🎯 StrawHatFuzzer — Web CTF Fuzzing Command Generator
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/CTF-Tool-red?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Kali%20%7C%20ParrotOS-informational?style=for-the-badge"/>
-</p>
+![Python](https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python&logoColor=white)
+![CTF Tool](https://img.shields.io/badge/CTF-Tool-red?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Kali%20%7C%20ParrotOS-informational?style=for-the-badge)
 
-<p align="center">
-  A beginner-friendly, interactive CLI tool that generates copy-paste ready fuzzing commands for the most popular web CTF tools.
-  Stop googling flags — just answer the prompts and get your command.
-</p>
+A beginner-friendly, interactive CLI tool that generates copy-paste ready fuzzing commands for the most popular web CTF tools.  
+Stop googling flags — just answer the prompts and get your command.
 
 ---
 
@@ -18,44 +14,117 @@
 
 - 🛠️ **5 tools supported** — ffuf, feroxbuster, wfuzz, gobuster, dirsearch
 - 🔍 **6 fuzzing modes** — Directory, Parameter, Subdomain, VHOST, API Endpoint, File Extension
+- 🐢 **Resource Impact Profiles** — Low / Medium / High so fuzzing never kills your browser
 - 📚 **Auto-suggests SecLists wordlists** based on your chosen fuzzing type
 - 🎨 **Color-coded interactive UI** with step-by-step prompts
 - 🔁 **Recursion support** with configurable depth (ffuf & feroxbuster)
-- 🧵 **Thread count & rate limiting** per tool
+- 🧵 **Thread count pre-filled per profile** — override if you want
+- 🚦 **Rate limiting baked in** — per-tool flags applied automatically
 - 🔎 **Response filtering** — filter by HTTP status code, response size, or word count
 - 📝 **Output file support** in the correct format per tool
 - 🪄 **Custom headers** support (e.g. `Cookie`, `Authorization`)
 - ⚠️ **Detects if a tool is not installed** in your PATH
-- 💡 **Per-tool tips** printed after every command
 - 🔄 **Loop mode** — generate multiple commands without restarting
+
+---
+
+## ⚙️ Resource Impact Profiles (New in v2.1)
+
+One of the biggest pain points with fuzzing is that it **saturates your CPU and network**, making your browser and other apps freeze.
+
+v2.1 fixes this by asking you to pick a profile **before** anything else:
+
+| Profile | Threads | Rate Limit | `nice` level | Effect |
+|---------|---------|------------|--------------|--------|
+| 🟢 **Low Impact** | 5 | 30 req/s | `nice -n 19` | Browser stays fully usable |
+| 🟡 **Medium** | 20 | 80 req/s | `nice -n 10` | Balanced — some slowdown |
+| 🔴 **High / Full Speed** | 40 | None | No nice | Max speed, PC may freeze |
+
+The profile is automatically applied to every tool's command using the correct flag for that tool:
+
+| Tool | Rate limit flag | Delay flag |
+|------|----------------|------------|
+| ffuf | `-rate 30` | — |
+| feroxbuster | `--rate-limit 30` | — |
+| gobuster | — | `--delay 30ms` |
+| wfuzz | `--req-delay 0.03` | — |
+| dirsearch | *(threads only)* | — |
+
+When you choose to run the command directly from the tool, it is automatically prefixed with `nice -n 19` (or `nice -n 10` for Medium).
+
+---
+
+## 🧠 What is `nice`?
+
+`nice` is a Linux command that sets the **CPU scheduling priority** of a process.
+
+Every process has a niceness value from **-20** (highest priority) to **+19** (lowest priority). Your browser and terminal run at `0` by default.
+
+```
+-20  ←── highest priority (greedy)
+  0  ←── default for everything
++19  ←── lowest priority (runs only when nothing else needs CPU)
+```
+
+Running your fuzzer at `nice -n 19` means:
+
+> The kernel gives CPU to your browser, editor, and terminal first.  
+> The fuzzer gets whatever is left over.
+
+**On an idle machine** — barely slower. The CPU is free anyway.  
+**While browsing** — slightly slower fuzzing, but a fully usable machine.
+
+```bash
+# Run manually with low CPU priority
+nice -n 19 ffuf -u http://target/FUZZ -w wordlist.txt -rate 30
+
+# Change priority of an already-running process
+renice +19 -p $(pgrep ffuf)
+
+# Check niceness of a running process
+ps -o pid,ni,comm -p $(pgrep ffuf)
+```
+
+`nice` controls **CPU**. Rate limiting (`-rate`) controls **network**. You need both for a fully smooth experience — that is why v2.1 applies both together.
 
 ---
 
 ## 🖥️ Demo
 
 ```
- ██████╗ ██╗   ██╗███████╗███████╗     ██████╗ ███████╗███╗   ██╗
- ██╔══██╗██║   ██║╚══███╔╝╚══███╔╝    ██╔════╝ ██╔════╝████╗  ██║
- ██████╔╝██║   ██║  ███╔╝   ███╔╝     ██║  ███╗█████╗  ██╔██╗ ██║
- ██╔══██╗██║   ██║ ███╔╝   ███╔╝      ██║   ██║██╔══╝  ██║╚██╗██║
- ██║  ██║╚██████╔╝███████╗███████╗    ╚██████╔╝███████╗██║ ╚████║
- ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝
-          Web CTF Fuzzing Command Generator v2.0
+           ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+           ┃          ██████╗ ██╗   ██╗███████╗███████╗           ┃
+           ┃          ██╔══██╗██║   ██║╚══███╔╝╚══███╔╝           ┃
+           ┃          ██████╔╝██║   ██║  ███╔╝   ███╔╝            ┃
+           ┃          ██╔══██╗██║   ██║ ███╔╝   ███╔╝             ┃
+           ┃          ██║  ██║╚██████╔╝███████╗███████╗           ┃
+           ┃          ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝           ┃
+           ┃         ▸ web ctf fuzzing command generator           ┃
+           ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-  ╔═══════════════════════════════════════════════════╗
-  ║           Generated Fuzzing Command               ║
-  ╠═══════════════════════════════════════════════════╣
-  ║  ffuf -u http://10.10.10.10/FUZZ                  ║
-  ║       -w /.../Web-Content/common.txt              ║
-  ║       -e .php,.txt -t 40 -c                       ║
-  ╚═══════════════════════════════════════════════════╝
+Step 0: Resource Impact Profile
+  1) ⚡ Low Impact  — browser-friendly (~30 req/s, 5 threads)
+  2) ▸ Medium      — balanced (~80 req/s, 20 threads)
+  3) ▸ High / Full Speed — no limits (will saturate network & CPU)
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║                  Generated Fuzzing Command                   ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  ffuf -u http://10.10.10.10/FUZZ -w .../common.txt          ║
+  ║       -e .php,.txt -t 5 -rate 30 -c                         ║
+  ╚══════════════════════════════════════════════════════════════╝
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Run safely (LOW profile):                                   │
+  │  nice -n 19 ffuf -u http://10.10.10.10/FUZZ ...             │
+  └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 📦 Requirements
 
-- Python 3.x (no external libraries needed — stdlib only)
+- Python 3.x (no external libraries — stdlib only)
 - [SecLists](https://github.com/danielmiessler/SecLists) installed at `/usr/share/seclists/`
 - One or more of the supported fuzzing tools installed
 
@@ -72,21 +141,7 @@ git clone https://github.com/danielmiessler/SecLists /usr/share/seclists
 ### Install Fuzzing Tools
 
 ```bash
-# ffuf
-sudo apt install ffuf -y
-
-# feroxbuster
-sudo apt install feroxbuster -y
-
-# wfuzz
-sudo apt install wfuzz -y
-
-# gobuster
-sudo apt install gobuster -y
-
-# dirsearch
-sudo apt install dirsearch -y
-# or: pip3 install dirsearch
+sudo apt install ffuf feroxbuster wfuzz gobuster dirsearch -y
 ```
 
 ---
@@ -94,18 +149,44 @@ sudo apt install dirsearch -y
 ## 🚀 Installation & Usage
 
 ```bash
-# Clone the repo
-git clone https://github.com/yourusername/fuzz-gen.git
-cd fuzz-gen
-
-# Make it executable
-chmod +x fuzz_gen.py
-
-# Run it
-python3 fuzz_gen.py
+git clone https://github.com/rj-karan/StrawHatFuzzer.git
+cd StrawHatFuzzer
+chmod +x fuzzer.py
+python3 fuzzer.py
 ```
 
-No virtual environment or `pip install` needed — it uses only Python standard library.
+No virtual environment or `pip install` needed.
+
+### Run with Low CPU Priority (Recommended)
+
+```bash
+nice -n 19 python3 fuzzer.py
+```
+
+This keeps your entire machine responsive — not just the fuzzer's output rate.
+
+---
+
+## 🗺️ Interactive Flow
+
+```
+Step 0 → Select resource profile (Low / Medium / High)
+Step 1 → Select fuzzing tool
+Step 2 → Enter target URL / IP with port
+Step 3 → Choose fuzzing type
+Step 4 → Configure options
+           ├── Wordlist (default or custom)
+           ├── URL / FUZZ placeholder
+           ├── Extensions (php, txt, html…)
+           ├── Threads (pre-filled from profile)
+           ├── Rate limit (pre-filled from profile)
+           ├── Recursion & depth
+           ├── Response filters (status / size / words)
+           ├── Custom headers
+           └── Output file
+Step 5 → Copy-paste ready command generated ✅
+         + "Run safely" version with nice prefix shown
+```
 
 ---
 
@@ -124,14 +205,14 @@ No virtual environment or `pip install` needed — it uses only Python standard 
 
 ## 📖 Wordlists Used (SecLists)
 
-| Fuzzing Type | Default Wordlist |
-|---|---|
-| Directory (small) | `Discovery/Web-Content/common.txt` |
-| Directory (large) | `Discovery/Web-Content/directory-list-2.3-medium.txt` |
-| Subdomain | `Discovery/DNS/subdomains-top1million-5000.txt` |
-| Parameter | `Discovery/Web-Content/burp-parameter-names.txt` |
-| VHOST | `Discovery/DNS/subdomains-top1million-5000.txt` |
-| API | `Discovery/Web-Content/api/objects.txt` |
+| Fuzzing Type | Options |
+|--------------|---------|
+| Directory | common, raft-medium, raft-large, raft-small, dirbuster-medium, dirbuster-big, combined, big, quickhits |
+| Files | raft-medium-files, raft-large-files, raft-small-files, raft-medium-words, raft-large-words |
+| Subdomain | subdomains-top1million-5000, subdomains-top1million-20000 |
+| Parameter | burp-parameter-names, url-params-top55-apps |
+| API | common-api-endpoints-mazen160, graphql, raft-medium-words |
+| Extension | web-extensions, web-extensions-big |
 
 You can override any wordlist with a custom path when prompted.
 
@@ -139,67 +220,71 @@ You can override any wordlist with a custom path when prompted.
 
 ## 💡 Example Output Commands
 
-**ffuf — Directory fuzzing with extensions and recursion:**
+**ffuf — Low-Impact directory fuzzing:**
+```bash
+nice -n 19 ffuf -u http://192.168.1.10:8080/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt -e .php,.txt -t 5 -rate 30 -c
+```
+
+**ffuf — Full-speed with recursion:**
 ```bash
 ffuf -u http://192.168.1.10:8080/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt -e .php,.txt -recursion -recursion-depth 2 -t 40 -c
 ```
 
-**gobuster — DNS subdomain fuzzing:**
+**gobuster — Low-Impact DNS subdomain fuzzing:**
 ```bash
-gobuster dns -d target.com -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -t 40
+nice -n 19 gobuster dns -d target.com -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -t 5 --delay 30ms
 ```
 
-**wfuzz — Parameter fuzzing with status filter:**
+**wfuzz — Low-Impact parameter fuzzing:**
 ```bash
-wfuzz --hc 404 -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt -t 40 -u http://target.com/?FUZZ=test
+nice -n 19 wfuzz --hc 404 --req-delay 0.03 -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt -t 5 -u http://target.com/?FUZZ=test
 ```
 
-**feroxbuster — Directory fuzzing with output:**
+**feroxbuster — Medium-impact directory fuzzing:**
 ```bash
-feroxbuster -u http://10.10.10.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -x php -x html --depth 2 -t 40 --color -o results.txt
-```
-
-**dirsearch — Directory fuzzing with extensions:**
-```bash
-dirsearch -u http://10.10.10.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -e php,html,txt,js,json -t 40
+nice -n 10 feroxbuster -u http://10.10.10.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt -x php -x html --depth 2 -t 20 --rate-limit 80 --color
 ```
 
 ---
 
-## 🗺️ Interactive Flow
+## 🐳 Docker Usage (Optional Isolation)
 
+If you want to isolate the fuzzer from your host network stack entirely, you can run it in Docker with hard resource caps.
+
+```dockerfile
+FROM kalilinux/kali-rolling
+RUN apt-get update && apt-get install -y \
+    ffuf feroxbuster gobuster wfuzz dirsearch \
+    python3 seclists --no-install-recommends
+WORKDIR /app
+COPY . .
+ENTRYPOINT ["python3", "fuzzer.py"]
 ```
-Step 1 → Select fuzzing tool
-Step 2 → Enter target URL / IP with port
-Step 3 → Choose fuzzing type
-Step 4 → Configure options
-           ├── Wordlist (default or custom)
-           ├── URL / FUZZ placeholder
-           ├── Extensions (php, txt, html…)
-           ├── Threads
-           ├── Recursion & depth
-           ├── Response filters (status / size / words)
-           ├── Custom headers
-           ├── Rate limit
-           └── Output file
-Step 5 → Copy-paste ready command generated ✅
+
+```bash
+docker build -t strawhat-fuzzer .
+
+# Run with CPU and memory limits
+docker run --cpus="0.5" --memory="512m" --network=host -it strawhat-fuzzer
 ```
+
+> Note: Docker `--cpus` caps CPU independently of `nice`. Use both `--cpus` and `nice -n 19` together for maximum isolation.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-fuzz-gen/
-├── fuzz_gen.py       # Main script — all logic in one file
-└── README.md         # This file
+StrawHatFuzzer/
+├── fuzzer.py     # Main script — all logic in one file
+└── README.md     # This file
 ```
 
 ---
 
 ## ⚠️ Disclaimer
 
-This tool is intended **for educational purposes and authorized security testing only** — such as CTF competitions, HackTheBox, TryHackMe, and penetration testing labs where you have explicit permission.
+This tool is intended **for educational purposes and authorized security testing only** — CTF competitions, HackTheBox, TryHackMe, and penetration testing labs where you have explicit permission.
 
 Do **not** use this tool against systems you do not own or have written permission to test. Unauthorized scanning is illegal.
 
@@ -207,19 +292,15 @@ Do **not** use this tool against systems you do not own or have written permissi
 
 ## 🤝 Contributing
 
-Pull requests are welcome! Ideas for contributions:
+Pull requests are welcome! Ideas:
 
-- Add support for more tools (e.g. `feroxbuster` spray mode, `nikto`, `arjun`)
+- Add support for more tools (e.g. `nikto`, `arjun`, `feroxbuster` spray mode)
 - Add proxy support (`--proxy http://127.0.0.1:8080`)
-- Add a `--no-color` flag for non-interactive / pipe usage
-- Add JSON config file export so commands can be saved and replayed
+- Add `--no-color` flag for pipe/non-interactive usage
+- Add JSON config export so commands can be saved and replayed
+- Add profile persistence (remember last used profile)
 
----
 
-## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-<p align="center">Made for CTF players, by a CTF player 🚩</p>
+Made for CTF players, by a CTF player 🚩  
+*by **zoro_rj***
