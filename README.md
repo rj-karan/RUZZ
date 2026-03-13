@@ -14,6 +14,8 @@ Stop googling flags — just answer the prompts and get your command.
 
 - 🛠️ **5 tools supported** — ffuf, feroxbuster, wfuzz, gobuster, dirsearch
 - 🔍 **6 fuzzing modes** — Directory, Parameter, Subdomain, VHOST, API Endpoint, File Extension
+- ⚡ **Quick mode** — single screen, rapid-fire prompts, instant command output
+- 🗺️ **Manual mode** — step-by-step guided flow (great for beginners)
 - 🐢 **Resource Impact Profiles** — Low / Medium / High so fuzzing never kills your browser
 - 📚 **Auto-suggests SecLists wordlists** based on your chosen fuzzing type
 - 🎨 **Color-coded interactive UI** with step-by-step prompts
@@ -28,11 +30,11 @@ Stop googling flags — just answer the prompts and get your command.
 
 ---
 
-## ⚙️ Resource Impact Profiles (New in v2.1)
+## ⚙️ Resource Impact Profiles
 
 One of the biggest pain points with fuzzing is that it **saturates your CPU and network**, making your browser and other apps freeze.
 
-v2.1 fixes this by asking you to pick a profile **before** anything else:
+RUZZ fixes this by asking you to pick a profile **before** anything else:
 
 | Profile | Threads | Rate Limit | `nice` level | Effect |
 |---------|---------|------------|--------------|--------|
@@ -102,16 +104,30 @@ ps -o pid,ni,comm -p $(pgrep ffuf)
            ┃         ▸ web ctf fuzzing command generator           ┃
            ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-Step 0: Resource Impact Profile
-  1) ⚡ Low Impact  — browser-friendly (~30 req/s, 5 threads)
-  2) ▸ Medium      — balanced (~80 req/s, 20 threads)
-  3) ▸ High / Full Speed — no limits (will saturate network & CPU)
+  How do you want to build your command?
+  ───────────────────────────────────────
+  1) ⚡ Quick   — single screen, rapid-fire prompts, instant command
+  2) ▸ Manual  — step-by-step guided mode (better for beginners)
+
+── Quick Mode ─────────────────────────────────────────
+  ➜ Target URL          : http://10.10.10.10
+  ➜ Tool   [ffuf]       :
+  ➜ Fuzz type  [dir]    :
+  ➜ Profile    [low]    :
+  ─────────────────────────────────────────────────────
+  ➜ Wordlist (ENTER for default) : [.../common.txt]
+  ➜ Extensions (ENTER to skip)   : php,txt
+  ➜ Threads  [5]        :
+  ➜ Rate limit [30]     :
+  ➜ Hide status codes   : 404
+  ➜ Output file         :
+  ➜ Extra flags         :
 
   ╔══════════════════════════════════════════════════════════════╗
   ║                  Generated Fuzzing Command                   ║
   ╠══════════════════════════════════════════════════════════════╣
   ║  ffuf -u http://10.10.10.10/FUZZ -w .../common.txt          ║
-  ║       -e .php,.txt -t 5 -rate 30 -c                         ║
+  ║       -e .php,.txt -t 5 -rate 30 -fc 404 -c                 ║
   ╚══════════════════════════════════════════════════════════════╝
 
   ┌──────────────────────────────────────────────────────────────┐
@@ -149,8 +165,8 @@ sudo apt install ffuf feroxbuster wfuzz gobuster dirsearch -y
 ## 🚀 Installation & Usage
 
 ```bash
-git clone https://github.com/rj-karan/StrawHatFuzzer.git
-cd StrawHatFuzzer
+git clone https://github.com/rj-karan/RUZZ.git
+cd RUZZ
 chmod +x fuzzer.py
 python3 fuzzer.py
 ```
@@ -169,6 +185,27 @@ This keeps your entire machine responsive — not just the fuzzer's output rate.
 
 ## 🗺️ Interactive Flow
 
+### ⚡ Quick Mode
+All inputs on a single screen — no numbered steps, no waiting:
+```
+➜ Target URL
+➜ Tool           (ffuf / feroxbuster / wfuzz / gobuster / dirsearch  or 1-5)
+➜ Fuzz type      (dir / param / sub / vhost / api / ext  or 1-6)
+➜ Profile        (low / medium / high  or 1-3)
+  ─────────────────────────────────────────
+➜ Wordlist       (ENTER = smart default for the chosen type)
+➜ Extensions
+➜ Threads
+➜ Rate limit
+➜ Hide status codes
+➜ Custom header
+➜ Output file
+➜ Extra flags
+  → Command printed instantly ✅
+```
+
+### 🗺️ Manual Mode
+Step-by-step guided flow — better for beginners or complex setups:
 ```
 Step 0 → Select resource profile (Low / Medium / High)
 Step 1 → Select fuzzing tool
@@ -262,10 +299,10 @@ ENTRYPOINT ["python3", "fuzzer.py"]
 ```
 
 ```bash
-docker build -t strawhat-fuzzer .
+docker build -t ruzz .
 
 # Run with CPU and memory limits
-docker run --cpus="0.5" --memory="512m" --network=host -it strawhat-fuzzer
+docker run --cpus="0.5" --memory="512m" --network=host -it ruzz
 ```
 
 > Note: Docker `--cpus` caps CPU independently of `nice`. Use both `--cpus` and `nice -n 19` together for maximum isolation.
@@ -275,7 +312,7 @@ docker run --cpus="0.5" --memory="512m" --network=host -it strawhat-fuzzer
 ## 📁 Project Structure
 
 ```
-StrawHatFuzzer/
+RUZZ/
 ├── fuzzer.py     # Main script — all logic in one file
 └── README.md     # This file
 ```
@@ -294,11 +331,12 @@ Do **not** use this tool against systems you do not own or have written permissi
 
 Pull requests are welcome! Ideas:
 
-- Add support for more tools (e.g. `nikto`, `arjun`, `feroxbuster` spray mode)
 - Add proxy support (`--proxy http://127.0.0.1:8080`)
+- Add command history (`~/.ruzz_history`) with `--history` flag
 - Add `--no-color` flag for pipe/non-interactive usage
 - Add JSON config export so commands can be saved and replayed
 - Add profile persistence (remember last used profile)
+- Add more tools (e.g. `nikto`, `arjun`)
 
 
 
