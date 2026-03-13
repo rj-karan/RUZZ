@@ -1,4 +1,4 @@
-# 🎯 StrawHatFuzzer — Web CTF Fuzzing Command Generator
+# 🎯 RUZZ — Web CTF Fuzzing Command Generator
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python&logoColor=white)
 ![CTF Tool](https://img.shields.io/badge/CTF-Tool-red?style=for-the-badge)
