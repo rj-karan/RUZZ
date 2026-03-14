@@ -1,9 +1,6 @@
 # 🎯 RUZZ — Web CTF Fuzzing Command Generator
 
-![Python](https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python&logoColor=white)
-![CTF Tool](https://img.shields.io/badge/CTF-Tool-red?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Kali%20%7C%20ParrotOS-informational?style=for-the-badge)
+
 
 A beginner-friendly, interactive CLI tool that generates copy-paste ready fuzzing commands for the most popular web CTF tools.  
 Stop googling flags — just answer the prompts and get your command.
