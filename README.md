@@ -6,6 +6,26 @@ A beginner-friendly, interactive CLI tool that generates copy-paste ready fuzzin
 Stop googling flags — just answer the prompts and get your command.
 
 ---
+## ⚡ Install (run from anywhere)
+```bash
+git clone https://github.com/rj-karan/RUZZ.git
+cd RUZZ
+chmod +x install.sh
+./install.sh
+```
+
+Now just type `ruzz` from anywhere in your terminal.
+
+### Uninstall
+```bash
+sudo rm /usr/local/bin/ruzz
+```
+
+### One-liner install
+```bash
+curl -sL https://raw.githubusercontent.com/rj-karan/RUZZ/main/fuzzer.py \
+  -o /tmp/ruzz && sudo mv /tmp/ruzz /usr/local/bin/ruzz && sudo chmod +x /usr/local/bin/ruzz
+```
 
 ## ✨ Features
 
