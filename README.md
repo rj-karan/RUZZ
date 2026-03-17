@@ -332,6 +332,7 @@ docker run --cpus="0.5" --memory="512m" --network=host -it ruzz
 RUZZ/
 ├── fuzzer.py     # Main script — all logic in one file
 └── README.md     # This file
+some files may added after the updates
 ```
 
 ---
