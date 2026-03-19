@@ -1,6 +1,7 @@
 #!/bin/bash
 # RUZZ Installer
 # by zoro_rj
+# best for learners
 
 set -e
 
