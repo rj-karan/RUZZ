@@ -269,7 +269,7 @@ def select_profile():
   {C.RED}  ⚠  Expect browser slowdowns and network saturation.{C.RESET}""")
     return profile
 
-# ─── Wordlist Prompts (manual mode) ───────────────────────────────────────────
+# ─── Wordlist Prompts ─────────────────────────────────────────────────────────
 
 def ask_wordlist_directory():
     options = {
@@ -733,6 +733,123 @@ def maybe_run(cmd, tool_name, profile):
         else:
             warn(f"Cannot run: '{tool_name}' is not installed.")
 
+
+# ─── Refine State Helper ──────────────────────────────────────────────────────
+
+def print_current_state(state):
+    """Print a compact summary of the current command config."""
+    wl_short = state["wordlist"].split("/")[-1] if state["wordlist"] else "none"
+    print(f"""
+  {C.DIM}┌─ Current Config ──────────────────────────────────┐
+  │  Target    : {C.WHITE}{state['target']}{C.DIM}
+  │  Tool      : {C.WHITE}{TOOLS[state['tool_key']]}{C.DIM}
+  │  Fuzz Type : {C.WHITE}{FUZZ_TYPES[state['fuzz_type']]}{C.DIM}
+  │  Wordlist  : {C.WHITE}{wl_short}{C.DIM}
+  │  Profile   : {C.WHITE}{state['profile']['name']}{C.DIM}
+  └───────────────────────────────────────────────────┘{C.RESET}""")
+
+
+# ─── Refine Menu (shown after every generated command) ───────────────────────
+
+def refine_menu(state):
+    """
+    Show a refine menu after generating a command.
+    Loops until the user chooses to exit or fresh start.
+    Returns: "exit" | "fresh"
+    """
+    while True:
+        section("🔧  What do you want to do next?")
+        print_current_state(state)
+
+        print(f"""
+  {C.YELLOW}  1{C.RESET}) {C.CYAN}🔄 Change Wordlist{C.RESET}      — swap to a different wordlist & regenerate
+  {C.YELLOW}  2{C.RESET}) {C.CYAN}🛠  Change Tool{C.RESET}          — switch tool (keep same target & type)
+  {C.YELLOW}  3{C.RESET}) {C.CYAN}🎯 Change Fuzz Type{C.RESET}     — switch dir/param/sub/vhost/api/ext
+  {C.YELLOW}  4{C.RESET}) {C.CYAN}▶  Run Command{C.RESET}          — execute the current command
+  {C.YELLOW}  5{C.RESET}) {C.CYAN}⚡ Fresh Start{C.RESET}          — build a completely new command
+  {C.YELLOW}  6{C.RESET}) {C.RED}✖  Exit{C.RESET}
+""")
+
+        choice = prompt("Enter choice", color=C.YELLOW)
+
+        # ── 1: Change Wordlist ────────────────────────────────────────────────
+        if choice == "1":
+            section("Change Wordlist")
+            asker = WORDLIST_ASKERS[state["fuzz_type"]]
+            state["wordlist"] = asker()
+            # Rebuild and reprint
+            cmd = _rebuild(state)
+            section("Updated Command")
+            print_command_box(cmd, state["profile"])
+            print_tips(state["tool_key"], state["fuzz_type"])
+            state["cmd"] = cmd
+
+        # ── 2: Change Tool ────────────────────────────────────────────────────
+        elif choice == "2":
+            section("Change Tool")
+            print(f"  {C.DIM}Tools: ffuf · feroxbuster · wfuzz · gobuster · dirsearch  (or 1-5){C.RESET}")
+            while True:
+                raw      = prompt("Tool", TOOLS[state["tool_key"]], C.CYAN).lower()
+                tool_key = TOOL_ALIASES.get(raw) or (raw if raw in TOOLS else None)
+                if tool_key:
+                    break
+                print(f"  {C.RED}✗ Enter a tool name or number 1-5.{C.RESET}")
+            state["tool_key"] = tool_key
+            success(f"Tool changed to: {TOOLS[tool_key]}")
+            cmd = _rebuild(state)
+            section("Updated Command")
+            print_command_box(cmd, state["profile"])
+            print_tips(state["tool_key"], state["fuzz_type"])
+            state["cmd"] = cmd
+
+        # ── 3: Change Fuzz Type ───────────────────────────────────────────────
+        elif choice == "3":
+            section("Change Fuzz Type")
+            print(f"  {C.DIM}Types: dir · param · sub · vhost · api · ext  (or 1-6){C.RESET}")
+            while True:
+                raw       = prompt("Fuzz type", FUZZ_TYPES[state["fuzz_type"]], C.CYAN).lower()
+                fuzz_type = FUZZ_TYPE_ALIASES.get(raw) or (raw if raw in FUZZ_TYPES else None)
+                if fuzz_type:
+                    break
+                print(f"  {C.RED}✗ Enter a type name or number 1-6.{C.RESET}")
+            state["fuzz_type"] = fuzz_type
+            # Auto-update wordlist to the default for the new type
+            new_default_wl = TYPE_DEFAULT_WORDLIST[fuzz_type]
+            info(f"Fuzz type changed — wordlist auto-updated to default for this type.")
+            info(f"Wordlist: {new_default_wl}")
+            state["wordlist"] = new_default_wl
+            success(f"Fuzz type changed to: {FUZZ_TYPES[fuzz_type]}")
+            cmd = _rebuild(state)
+            section("Updated Command")
+            print_command_box(cmd, state["profile"])
+            print_tips(state["tool_key"], state["fuzz_type"])
+            state["cmd"] = cmd
+
+        # ── 4: Run command ────────────────────────────────────────────────────
+        elif choice == "4":
+            maybe_run(state["cmd"], TOOLS[state["tool_key"]], state["profile"])
+
+        # ── 5: Fresh Start ────────────────────────────────────────────────────
+        elif choice == "5":
+            return "fresh"
+
+        # ── 6: Exit ───────────────────────────────────────────────────────────
+        elif choice == "6":
+            return "exit"
+
+        else:
+            print(f"  {C.RED}✗ Enter 1–6.{C.RESET}")
+
+
+def _rebuild(state):
+    """Re-run the builder with current state and return the command string."""
+    builder = TOOL_BUILDERS[state["tool_key"]]
+    opts    = {k: v for k, v in state["opts"].items()}
+    opts["profile"]  = state["profile"]
+    opts["wordlist"] = state["wordlist"]   # opts may have stale wordlist; override
+    return builder(state["target"], state["fuzz_type"], state["wordlist"], **opts)
+
+
 # ─── QUICK MODE ───────────────────────────────────────────────────────────────
 
 def run_quick():
@@ -802,18 +919,28 @@ def run_quick():
     # extra
     extra = ask_extra_flags()
 
-    # build & print
-    section("Generated Command")
-    builder = TOOL_BUILDERS[tool_key]
-    cmd = builder(
-        target, fuzz_type, wordlist,
+    # Build opts dict (everything except wordlist & profile)
+    opts = dict(
         threads=threads, rate_limit=rate, filters=filters,
         extensions=extensions, header=header, output=output,
-        extra=extra, profile=profile,
+        extra=extra,
     )
+
+    # Build & print
+    section("Generated Command")
+    builder = TOOL_BUILDERS[tool_key]
+    cmd = builder(target, fuzz_type, wordlist, profile=profile, **opts)
     print_command_box(cmd, profile)
     print_tips(tool_key, fuzz_type)
-    maybe_run(cmd, TOOLS[tool_key], profile)
+
+    # ── Assemble state for refine loop ────────────────────────────────────────
+    state = dict(
+        target=target, tool_key=tool_key, fuzz_type=fuzz_type,
+        wordlist=wordlist, profile=profile, opts=opts, cmd=cmd,
+    )
+    result = refine_menu(state)
+    return result   # "fresh" | "exit"
+
 
 # ─── MANUAL MODE ──────────────────────────────────────────────────────────────
 
@@ -851,24 +978,32 @@ def run_manual():
     cmd = TOOL_BUILDERS[tool_key](target, fuzz_type, wordlist, **opts)
     print_command_box(cmd, profile)
     print_tips(tool_key, fuzz_type)
-    maybe_run(cmd, TOOLS[tool_key], profile)
+
+    # ── Assemble state for refine loop ────────────────────────────────────────
+    state = dict(
+        target=target, tool_key=tool_key, fuzz_type=fuzz_type,
+        wordlist=wordlist, profile=profile, opts=opts, cmd=cmd,
+    )
+    result = refine_menu(state)
+    return result   # "fresh" | "exit"
+
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
 def run():
     banner()
-    mode = select_mode()
+    while True:
+        mode = select_mode()
+        result = run_quick() if mode == "1" else run_manual()
 
-    if mode == "1":
-        run_quick()
-    else:
-        run_manual()
+        if result == "exit":
+            break
+        # result == "fresh" → loop back to select_mode naturally
+        # Print a small separator so it feels like a fresh session
+        print(f"\n{C.DIM}  {'─'*50}{C.RESET}")
+        print(f"  {C.MAGENTA}{C.BOLD}  Starting fresh…{C.RESET}\n")
 
-    print()
-    if prompt("Generate another command? (y/N)", "n", C.CYAN).lower() == "y":
-        run()
-    else:
-        print(f"\n{C.GREEN}{C.BOLD}  Happy Fuzzing! 🎯{C.RESET}\n")
+    print(f"\n{C.GREEN}{C.BOLD}  Happy Fuzzing! 🎯{C.RESET}\n")
 
 
 if __name__ == "__main__":
