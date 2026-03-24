@@ -487,7 +487,6 @@ def build_feroxbuster(target, fuzz_type, wordlist, **kw):
     if kw.get("header"): cmd += ["-H",  f'"{kw["header"]}"']
     if kw.get("output"): cmd += ["-o",  kw["output"]]
     if kw.get("extra"):  cmd.append(kw["extra"])
-    cmd += ["--color"]
     return " ".join(cmd)
 
 
